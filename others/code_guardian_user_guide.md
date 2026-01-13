@@ -848,7 +848,7 @@ var Grpc GrpcInvoker = newGrpcClient()
 │ 工作目录          │ /Users/xxx/repo      │ /workspace/gitlab/repo-   │
 │                  │                      │ {hash}-for-run/          │
 │ 配置文件          │ ✅ 完整存在            │ ❌ 可能缺失                │
-│ 环境变量          │ 用户可控               │ DMS 预设                 │
+│ 环境变量          │ 用户可控               │ DMS 预设                  │
 │ 网络访问          │ 完整                  │ 受限                      │
 └──────────────────┴──────────────────────┴──────────────────────────┘
 ```
