@@ -492,58 +492,9 @@ if err != nil {
 
 ---
 
-## 6. 最佳实践
+## 6. 常见问题与解决方案
 
-### 6.1 测试文件位置规范
-
-| 规则 | 说明 |
-|-----|------|
-| **同目录原则** | 测试文件必须与被测代码在同一目录 |
-| **同包原则** | 测试文件的 package 必须与被测代码相同 |
-| **命名规范** | 测试文件命名: `{source_file}_test.go` |
-
-### 6.2 Mock 策略
-
-#### 推荐的 Mock 层级
-
-```
-┌─────────────────────────────────────────┐
-│           被测函数                       │
-├─────────────────────────────────────────┤
-│  ✅ Mock 这一层: 直接依赖的方法             │
-├─────────────────────────────────────────┤
-│  ❌ 不要 Mock: 底层实现细节                │
-└─────────────────────────────────────────┘
-```
-
-#### Mock 示例
-
-```go
-// ✅ 推荐：Mock Facade 的公开方法
-patches.ApplyMethod(reflect.TypeOf(facade), "GetLowestAddressIdNameMapping",
-    func(_ *SiteNetworkRouteFacade, ...) (map[uint64]string, error) {
-        return mockData, nil
-    })
-
-// ❌ 避免：Mock 私有类型的底层方法
-patches.ApplyMethod(reflect.TypeOf(client.Grpc), "Invoke", ...)
-```
-
-### 6.3 测试用例覆盖原则
-
-遵循 **2-2-1** 原则：
-
-| 场景类型 | 最少数量 | 说明 |
-|---------|---------|------|
-| 成功场景 | ≥2 | 正常数据 + 边界数据 |
-| 失败场景 | ≥2 | 参数错误 + 外部依赖失败 |
-| 边界场景 | ≥1 | 空值/零值/极值 |
-
----
-
-## 7. 常见问题与解决方案
-
-### 7.1 自证预言测试（Self-fulfilling Prophecy Tests）
+### 6.1 自证预言测试（Self-fulfilling Prophecy Tests）
 
 **问题现象**：
 - 测试通过但覆盖率为 0%
@@ -558,7 +509,7 @@ patches.ApplyMethod(reflect.TypeOf(client.Grpc), "Invoke", ...)
 2. 确保测试中实际调用了被测函数
 3. 验证返回值而不仅仅是 Mock 是否被调用
 
-### 7.2 Mock 私有类型失败
+### 6.2 Mock 私有类型失败
 
 **问题现象**：
 ```
@@ -573,7 +524,7 @@ panic: retrieve method by name failed
 1. 改为 Mock 公开的 Facade 方法
 2. 或在被测包内创建 Mock 对象
 
-### 7.3 Chassis 初始化 Panic
+### 6.3 Chassis 初始化 Panic
 
 **问题现象**：
 ```
@@ -587,7 +538,7 @@ panic: InitConfig error, CHASSIS_CONF_DIR: ...
 1. Mock 依赖 Chassis 的方法
 2. 或使用 `lib.InitTestChassis()` 初始化测试环境
 
-### 7.4 本地测试通过但 DMS 执行失败
+### 6.4 本地测试通过但 DMS 执行失败
 
 **问题现象**：
 - 本地执行 `go test` 全部通过
@@ -662,7 +613,7 @@ func TestXxx(t *testing.T) {
 | ✅ 最小依赖 | 只初始化测试必需的最小配置集 |
 | ⚠️ 谨慎使用 | 谨慎使用 `lib.InitTestChassis()` 等全局初始化函数 |
 
-### 7.5 包级初始化导致测试 panic
+### 6.5 包级初始化导致测试 panic
 
 **问题现象**：
 - 在同一个包中添加新测试后，整个包的测试都失败
@@ -713,11 +664,11 @@ func getTrackService() *TrackService {
 
 ---
 
-## 8. MCP Tool的后续优化
+## 7. MCP Tool的后续优化
 
-### 8.1 提示词优化
+### 7.1 提示词优化
 
-#### 8.1.1 避免自证预言测试
+#### 7.1.1 避免自证预言测试
 
 **建议添加到 AI 提示词**：
 
@@ -735,7 +686,7 @@ func getTrackService() *TrackService {
    - ❌ 避免 Mock 私有类型的底层实现
 ```
 
-#### 8.1.2 增强测试生成质量
+#### 7.1.2 增强测试生成质量
 
 ```markdown
 ## 测试生成检查清单
@@ -748,7 +699,7 @@ func getTrackService() *TrackService {
 - [ ] 包含至少 2 个成功、2 个失败、1 个边界场景
 ```
 
-#### 8.1.3 DMS 环境兼容性检查
+#### 7.1.3 DMS 环境兼容性检查
 
 ```markdown
 ## DMS 环境兼容性检查清单
@@ -773,9 +724,9 @@ lib.CommonConfig = &lib.ConfigOptions{IConfig: lib.ConfigCenter{}}
 // 配合完善的 Mock
 ```
 
-### 8.2 工具流程优化
+### 7.2 工具流程优化
 
-#### 8.2.1 当前流程问题
+#### 7.2.1 当前流程问题
 
 ```
 当前流程:
@@ -784,7 +735,7 @@ lib.CommonConfig = &lib.ConfigOptions{IConfig: lib.ConfigCenter{}}
                                                缺少 DMS 触发和验证
 ```
 
-#### 8.2.2 建议优化后的流程
+#### 7.2.2 建议优化后的流程
 
 ```
 优化流程:
@@ -793,7 +744,7 @@ lib.CommonConfig = &lib.ConfigOptions{IConfig: lib.ConfigCenter{}}
 生成报告 ← 获取覆盖率结果 ← 等待 DMS 完成 ← 触发 DMS
 ```
 
-#### 8.2.3 具体优化建议
+#### 7.2.3 具体优化建议
 
 | 优化项 | 当前状态 | 建议改进 |
 |-------|---------|---------|
@@ -803,9 +754,9 @@ lib.CommonConfig = &lib.ConfigOptions{IConfig: lib.ConfigCenter{}}
 | 进度显示 | 简单输出 | 添加进度条和状态提示 |
 | 报告生成 | 基础信息 | 增加详细的代码块覆盖对比 |
 
-### 8.3 技术改进建议
+### 7.3 技术改进建议
 
-#### 8.3.1 提升 Mock 能力
+#### 7.3.1 提升 Mock 能力
 
 **问题**：无法 Mock 私有类型（如 `*grpcClient`）
 
@@ -822,7 +773,7 @@ type GrpcInvoker interface {
 var Grpc GrpcInvoker = newGrpcClient()
 ```
 
-#### 8.3.2 改进测试模板
+#### 7.3.2 改进测试模板
 
 **当前模板问题**：
 - 通用性不够，需要针对不同代码结构调整
@@ -832,7 +783,7 @@ var Grpc GrpcInvoker = newGrpcClient()
 2. 根据函数签名自动选择合适的模板
 3. 支持自定义模板配置
 
-#### 8.3.3 增强 DMS 环境兼容性
+#### 7.3.3 增强 DMS 环境兼容性
 
 **问题**：本地测试通过但 DMS 执行失败
 
@@ -848,7 +799,7 @@ var Grpc GrpcInvoker = newGrpcClient()
 │ 工作目录          │ /Users/xxx/repo      │ /workspace/gitlab/repo-   │
 │                  │                      │ {hash}-for-run/          │
 │ 配置文件          │ ✅ 完整存在            │ ❌ 可能缺失                │
-│ 环境变量          │ 用户可控               │ DMS 预设                  │
+│ 环境变量          │ 用户可控               │ DMS 预设                 │
 │ 网络访问          │ 完整                  │ 受限                      │
 └──────────────────┴──────────────────────┴──────────────────────────┘
 ```
@@ -912,7 +863,7 @@ func SafeInitTestChassis() error {
 - 提前发现可能在 DMS 中失败的测试
 - 在本地阶段就给出修复建议
 
-### 8.4 用户体验优化
+### 7.4 用户体验优化
 
 | 优化项 | 描述 |
 |-------|------|
@@ -923,28 +874,28 @@ func SafeInitTestChassis() error {
 | **批量处理** | 支持同时处理多个代码块 |
 | **总结文档** | 生成更加详细的总结文档，如用例执行情况，用例覆盖代码位置，覆盖率计算等 |
 
-### 8.5 知识库完善
+### 7.5 知识库完善
 
 结合实际使用案例，持续建设知识库，完善单测生成规则
 
 ---
 
-## 9. 附录
+## 8. 附录
 
-### 9.1 相关文档链接
+### 8.1 相关文档链接
 
 - [项目单元测试规范](/.cursor/rules/unit-test/)
 - [Go 常见陷阱指南](/.cursor/rules/knowledge/go-common-pitfalls.mdc)
 - [gomonkey 使用指南](/.cursor/rules/unit-test/knowledge/gomonkey-runtime-errors.mdc)
 
-### 9.2 版本历史
+### 8.2 版本历史
 
 | 版本 | 日期 | 更新内容 |
 |-----|------|---------|
 | v1.0 | 2026-01-13 | 初始版本发布 |
 | v1.1 | 2026-01-13 | 添加 fleetorder-service 使用案例（问题案例）；新增 DMS 环境兼容性问题说明；补充本地测试通过但 DMS 失败的解决方案；添加 DMS 环境兼容性优化建议 |
 
-### 9.3 反馈与支持
+### 8.3 反馈与支持
 
 如有问题或建议，请联系：
 - **Slack**: 
