@@ -467,24 +467,7 @@ lib.InitTestChassis()
 lib.CommonConfig = &lib.ConfigOptions{IConfig: lib.ConfigCenter{}}
 ```
 
-**方案二：在 DMS 环境中跳过依赖 Chassis 的测试**
-
-使用环境检测跳过不兼容的测试：
-
-```go
-import "runtime"
-
-func TestXxx(t *testing.T) {
-    // DMS 环境检测（Linux 且非本地开发机）
-    if runtime.GOOS != "darwin" && runtime.GOOS != "windows" {
-        t.Skip("Skip in DMS environment: chassis config not available")
-    }
-    lib.InitTestChassis()
-    // ... 测试逻辑
-}
-```
-
-**方案三：修改 lib.InitTestChassis() 容错逻辑**
+**方案二：修改 lib.InitTestChassis() 容错逻辑**
 
 修改 `lib/test_env_config.go`，使其在初始化失败时不 panic：
 
