@@ -632,26 +632,7 @@ func TestXxx(t *testing.T) {
 }
 ```
 
-**方案二：添加 DMS 环境检测**
-
-```go
-import "runtime"
-
-// inDms 检测是否在 DMS 环境中运行
-func inDms() bool {
-    return runtime.GOOS != "darwin" && runtime.GOOS != "windows"
-}
-
-func TestXxx(t *testing.T) {
-    if inDms() {
-        t.Skip("Skip in DMS environment: requires chassis config")
-    }
-    lib.InitTestChassis()
-    // ...
-}
-```
-
-**方案三：完善 Mock 覆盖**
+**方案二：完善 Mock 覆盖**
 
 如果测试必须调用 `lib.InitTestChassis()`，确保所有依赖 Chassis 配置的方法都被 Mock：
 
@@ -732,7 +713,7 @@ func getTrackService() *TrackService {
 
 ---
 
-## 8. 优化建议
+## 8. MCP Tool的后续优化
 
 ### 8.1 提示词优化
 
@@ -940,6 +921,11 @@ func SafeInitTestChassis() error {
 | **错误提示** | 提供更清晰的错误信息和修复建议 |
 | **历史记录** | 保存执行历史，支持查看和对比 |
 | **批量处理** | 支持同时处理多个代码块 |
+| **总结文档** | 生成更加详细的总结文档，如用例执行情况，用例覆盖代码位置，覆盖率计算等 |
+
+### 8.5 知识库完善
+
+结合实际使用案例，持续建设知识库，完善单测生成规则
 
 ---
 
