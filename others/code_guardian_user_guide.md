@@ -108,10 +108,13 @@
 {
   "mcpServers": {
     "code-guardian": {
-      "command": "node",
-      "args": ["/path/to/code-guardian/server.js"],
+      "command": "python3",
+      "args": [
+        "/Users/xxx/code_guardian/main.py"
+      ],
       "env": {
-        "API_TOKEN": "your-api-token"
+        "SSC_ORG_ID": "xxx",
+        "AURA_API_BASE_URL": "https://aura-api.example.com"
       }
     }
   }
@@ -134,7 +137,33 @@ go get github.com/stretchr/testify
 
 ## 4. 工具使用方法
 
-### 4.1 标准使用流程
+### 4.1 一键完成环境配置
+
+#### 步骤 1: 安装依赖
+
+```bash
+cd code_guardian
+pip install -r requirements.txt
+```
+
+#### 步骤 2: 配置 Cursor
+
+```bash
+export SSC_ORG_ID="your-org-id"  # 例如：27
+./scripts/setup_cursor.sh
+```
+
+#### 步骤 3: 验证配置
+
+```bash
+./scripts/verify_setup.sh
+```
+
+#### 步骤 4: 重启 Cursor
+
+重启 Cursor IDE 使 MCP 配置生效，即可开始使用。
+
+### 4.2 标准使用流程
 
 #### 步骤 1: 启动对话并提供参数
 
@@ -894,11 +923,43 @@ func SafeInitTestChassis() error {
 | v1.0 | 2026-01-13 | 初始版本发布 |
 | v1.1 | 2026-01-13 | 添加 fleetorder-service 使用案例（问题案例）；新增 DMS 环境兼容性问题说明；补充本地测试通过但 DMS 失败的解决方案；添加 DMS 环境兼容性优化建议 |
 
-### 8.3 反馈与支持
+### 8.3 问题反馈清单
 
-如有问题或建议，请联系：
-- **Slack**: 
-- **邮箱**: 
+请使用以下表格记录推广使用过程中遇到的问题：
+
+| 序号 | 反馈日期 | 反馈人 | 仓库名称 | 问题描述 | 问题分类 | 严重程度 | 状态 | 解决方案 | 解决日期 |
+|-----|---------|-------|---------|---------|---------|---------|------|---------|---------|
+| 1 | 2026-01-13 | jiaxuan.han | fulfillment-service | 自证预言测试导致覆盖率为0 | 测试生成 | 高 | ✅ 已解决 | 测试文件需与被测代码同目录 | 2026-01-13 |
+| 2 | | | | | | | | | |
+| 3 | | | | | | | | | |
+
+#### 问题分类说明
+
+| 分类 | 说明 |
+|-----|------|
+| 环境配置 | MCP 配置、依赖安装等问题 |
+| 覆盖率获取 | 从 DMS 获取覆盖率数据失败 |
+| 测试生成 | 生成的测试代码有问题 |
+| 测试执行 | 本地测试执行失败 |
+| 代码推送 | Git 推送相关问题 |
+| DMS 触发 | DMS 任务创建或执行失败 |
+| Aura 上报 | 数据上报失败 |
+| 其他 | 其他未分类问题 |
+
+#### 严重程度说明
+
+| 等级 | 说明 |
+|-----|------|
+| 高 | 阻塞工具使用，无法完成核心流程 |
+| 中 | 影响效率但有 workaround |
+| 低 | 体验问题，不影响功能 |
+
+#### 反馈渠道
+
+如有问题或建议，请通过以下方式反馈：
+- **Slack**: #spx-code-guardian
+- **邮箱**: spx-fulfillment-team@shopee.com
+- **GitHub Issue**: 在 code_guardian 仓库提交 Issue
 
 ---
 
