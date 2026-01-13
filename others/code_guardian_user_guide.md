@@ -947,8 +947,8 @@ func SafeInitTestChassis() error {
 ### 9.3 反馈与支持
 
 如有问题或建议，请联系：
-- **Slack**: #spx-fulfillment-dev
-- **邮箱**: spx-fulfillment-team@shopee.com
+- **Slack**: 
+- **邮箱**: 
 
 ---
 
