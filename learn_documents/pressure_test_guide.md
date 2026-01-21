@@ -1584,12 +1584,10 @@ QPS = 成功请求数 / 测试时长(秒)
 | 调用关系 | 调用方式 | 说明 |
 |---------|---------|------|
 | FO → Checkout | HTTP | 前端发起的HTTP请求 |
-| Checkout → Network | **函数调用** | 同进程/模块内部调用，**无法单独统计接口指标** |
+| Checkout → Network | gRPC | 跨服务RPC调用 |
 | Network → Pickup | gRPC | 跨服务RPC调用 |
 | Network → Smart Sorting | gRPC | 跨服务RPC调用 |
 | Smart Sorting → Address | gRPC | 可选调用，根据配置决定 |
-
-> **重要**：Checkout调用Network是函数调用而非RPC，因此Network Service的"接口指标"无法独立统计，其性能体现在Checkout的整体耗时中。
 
 ### 12.3 各服务详细说明
 
