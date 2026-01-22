@@ -1487,7 +1487,8 @@ QPS = 成功请求数 / 测试时长(秒)
 | 注意事项 | 压测前中后注意事项 | 第10章 |
 | 公式速查 | QPS、容量、吞吐量公式 | 第11章 |
 | 实战案例 | Throttle接口全链路调用详解 | 第12章 |
-| 监控指标 | MySQL/Redis监控面板详解 | 第13章 |
+| 监控指标 | MySQL/Redis/ES监控面板详解 | 第13章 |
+| ES共用风险 | ES与Live共用集群注意事项 | 第13.3章 |
 | 统计模板 | 压测指标统计表模板 | 第14章 |
 
 ---
@@ -1927,9 +1928,174 @@ MatchPickupHubZoneV2
 | **P95 (ms)** | 7D P95 Latency | Health Check (μs → ms转换) |
 | **P99 (ms)** | P99 Latency (Last 5 min) | Health Check |
 
-### 13.3 关键告警阈值汇总
+### 13.3 Elasticsearch监控指标详解
 
-#### 13.3.1 MySQL告警阈值
+> **重要提醒**：本次压测的ES集群与Live生产环境共用，压测产生的负载会直接影响线上其他业务。**必须确保压测期间ES集群整体负载不超过60%**，否则可能导致线上业务受影响甚至服务不可用。
+
+#### 13.3.1 为什么ES共用集群是风险点
+
+| 风险点 | 说明 | 后果 |
+|-------|------|------|
+| **资源争抢** | 压测流量与线上流量共享CPU、内存、IO | 线上查询延迟升高 |
+| **分片压力** | 大量查询可能导致分片热点 | 部分查询超时 |
+| **GC影响** | 堆内存压力增大触发Full GC | 服务暂停响应 |
+| **线程池耗尽** | 查询线程被压测请求占满 | 线上请求被拒绝 |
+| **熔断触发** | 内存压力过大触发Circuit Breaker | 查询失败 |
+
+**控制措施**：
+- 压测期间持续监控CPU使用率，保持 < 60%
+- 观察查询延迟变化，一旦P99显著上升立即降压
+- 关注线程池队列和拒绝数，出现拒绝立即停止
+- 与线上业务团队沟通压测时间窗口
+
+#### 13.3.2 Cluster（集群概览）
+
+| 指标 | 含义 | 压测关注点 | 正常/告警阈值 |
+|------|------|-----------|--------------|
+| **Cluster status** | 集群健康状态 | **必须保持green** | green正常，yellow警告，red危险 |
+| **Cluster version** | ES版本号 | 了解版本特性 | - |
+| **Pending tasks** | 待处理的集群管理任务 | 应保持为0 | >0说明集群繁忙 |
+| **Cluster Total Data Storage** | 集群数据总存储量 | 了解数据规模 | - |
+| **Cluster Nodes** | 集群节点总数 | 集群规模 | 当前39个节点 |
+| **Unassigned shards** | 未分配的分片数 | **必须为0** | >0说明集群异常 |
+| **Data Cache Ratio** | 数据缓存比例 | 缓存效率 | - |
+| **Relocating shards** | 正在迁移的分片 | 应为0或极少 | 持续>0说明负载不均 |
+| **Initializing shards** | 正在初始化的分片 | 应为0 | >0说明有分片恢复中 |
+| **Cluster Data nodes** | 数据节点数 | 实际存储数据的节点 | 当前24个数据节点 |
+| **Active shards** | 活跃分片总数 | 了解分片规模 | 当前16.4K个分片 |
+| **Shards Capacity Usage** | 分片容量使用率 | **核心指标** | 当前68.3%，>80%需扩容 |
+| **SLI** | 服务等级指标 | **必须为1** | <1说明SLA不达标 |
+
+#### 13.3.3 System（系统资源）
+
+| 指标 | 含义 | 压测关注点 | 告警阈值 |
+|------|------|-----------|---------|
+| **CPU usage** | 各节点CPU使用率 | **最核心指标，必须<60%** | >60%立即降压 |
+| **Memory usage** | 内存使用量 | 观察是否稳定 | 接近上限需关注 |
+| **Disk usage** | 磁盘使用率 | 存储空间 | >85%需扩容 |
+| **Load Average** | 系统负载平均值 | 对比CPU核数 | >核数说明过载 |
+| **Network IO** | 网络读写流量 | 观察是否成为瓶颈 | - |
+| **Disk IO** | 磁盘读写流量 | IO密集型操作的瓶颈 | 持续高IO需关注 |
+| **exporter-latency** | 监控导出器延迟 | 监控系统健康 | 突增说明系统繁忙 |
+| **SLI-Availability** | 可用性SLI | 必须保持1.0 | <1说明有不可用 |
+| **SLI-Durability** | 持久性SLI | 必须保持1.0 | <1说明有数据风险 |
+
+#### 13.3.4 ES Operation（ES操作指标）
+
+| 指标 | 含义 | 压测关注点 | 说明 |
+|------|------|-----------|------|
+| **Documents indexing rate** | 文档索引速率(docs/s) | 写入性能 | 当前约10K-40K docs/s |
+| **Indexing latency** | 索引延迟 | 写入耗时 | 正常<10ms，突增需关注 |
+| **query rate** | 查询速率(searches/s) | **核心指标 - 查询QPS** | 当前约2.5K-12.5K/s |
+| **query latency** | 查询延迟 | **核心指标 - 响应时间** | 正常10-50ms |
+| **Documents indexing rate DoD** | 索引速率日环比 | 与昨日对比 | - |
+| **Indexing latency DoD** | 索引延迟日环比 | 延迟变化趋势 | - |
+| **query rate DoD** | 查询速率日环比 | 流量变化趋势 | - |
+| **query latency DoD** | 查询延迟日环比 | 性能变化趋势 | 上升说明性能下降 |
+
+#### 13.3.5 Documents（文档相关）
+
+| 指标 | 含义 | 压测关注点 | 说明 |
+|------|------|-----------|------|
+| **Documents count (with replicas)** | 文档总数(含副本) | 数据规模 | 当前约20-30 Billion |
+| **Documents count per index** | 每索引文档数 | 索引分布 | - |
+| **Documents merging rate** | 文档合并速率 | 后台合并压力 | 过高影响查询性能 |
+| **refresh rate** | 刷新速率 | 索引可见性延迟 | - |
+| **Documents deleting rate** | 文档删除速率 | 删除操作频率 | - |
+
+#### 13.3.6 Per Index（按索引维度）
+
+| 指标 | 含义 | 压测关注点 | 说明 |
+|------|------|-----------|------|
+| **query rate per index** | 每索引查询速率 | 识别热点索引 | 关注smart_sorting相关索引 |
+| **index rate per index** | 每索引写入速率 | 写入热点 | - |
+| **query latency per index** | 每索引查询延迟 | **识别慢查询索引** | 某些索引10-15s需优化 |
+| **index latency per index** | 每索引写入延迟 | 写入慢的索引 | - |
+| **Segment count per index** | 每索引段数 | 段过多影响性能 | - |
+| **fetch latency per index** | 每索引获取延迟 | Fetch阶段耗时 | - |
+| **delete latency/rate per index** | 删除延迟和速率 | 删除操作 | - |
+
+#### 13.3.7 Scroll（滚动查询）
+
+| 指标 | 含义 | 压测关注点 | 告警阈值 |
+|------|------|-----------|---------|
+| **scroll context usage** | 滚动上下文使用率 | 大结果集查询 | >1%需关注 |
+| **scroll context count by index** | 每索引滚动上下文数 | 识别大查询 | - |
+| **scroll rate by index** | 每索引滚动速率 | 滚动查询频率 | - |
+| **fetch latency** | Fetch延迟 | 获取阶段耗时 | 正常0.5-2ms |
+
+#### 13.3.8 Threadpool & Throttling（线程池与限流）
+
+| 指标 | 含义 | 压测关注点 | 告警阈值 |
+|------|------|-----------|---------|
+| **Threadpool Queue Count** | 线程池队列长度 | **核心指标** | >0说明处理不过来 |
+| **Threadpool Rejected** | 线程池拒绝数 | **必须为0** | >0说明严重过载 |
+| **Indexing throttling** | 索引限流时间 | 写入被限流 | >0说明写入压力大 |
+| **Merging throttling** | 合并限流时间 | 后台合并被限流 | 持续>0需关注 |
+| **breakers tripped rate** | 熔断器触发率 | **必须为0** | >0说明内存压力过大 |
+
+#### 13.3.9 JVM（Java虚拟机）
+
+| 指标 | 含义 | 压测关注点 | 告警阈值 |
+|------|------|-----------|---------|
+| **Heap Usage** | 堆内存使用率 | **核心指标** | >75%需关注，>85%危险 |
+| **GC time** | 垃圾回收时间 | GC停顿 | 持续>100ms影响性能 |
+| **GC time - young** | Young GC时间 | 年轻代回收 | 正常5-22ms |
+
+#### 13.3.10 Caches（缓存相关）
+
+| 指标 | 含义 | 压测关注点 | 说明 |
+|------|------|-----------|------|
+| **Query cache size** | 查询缓存大小 | 缓存使用 | 当前0-3.73GiB |
+| **Query cache evictions** | 查询缓存驱逐 | 缓存失效 | 突增说明缓存不够 |
+| **Query cache hits** | 查询缓存命中 | 缓存效果 | 越高越好 |
+| **Query cache misses** | 查询缓存未命中 | 缓存穿透 | 过高说明缓存无效 |
+| **Field data memory size** | 字段数据内存 | 聚合排序缓存 | 当前18-75GiB |
+| **Field data evictions** | 字段数据驱逐 | 字段缓存失效 | 频繁驱逐影响性能 |
+
+#### 13.3.11 Storage（存储相关）
+
+| 指标 | 含义 | 压测关注点 | 说明 |
+|------|------|-----------|------|
+| **primary index size** | 主分片索引大小 | 数据量 | 当前约5.24-5.31 TiB |
+| **index size with replicas** | 含副本索引大小 | 总存储 | 当前约10.5-10.6 TiB |
+| **primary size per index** | 每索引主分片大小 | 索引大小分布 | - |
+| **per index size with replica** | 每索引含副本大小 | 索引总大小 | - |
+| **machine capacity for nodes** | 节点机器容量 | 存储上限 | - |
+| **Cluster Total machine Storage** | 集群总存储容量 | 存储总量 | 当前34.4 TiB |
+
+#### 13.3.12 ES指标与统计表对应
+
+| 统计表列 | 监控面板指标 | 获取位置 | 说明 |
+|---------|-------------|---------|------|
+| **QPS** | query rate | ES Operation面板 | 当前约2.5K-12.5K/s |
+| **Failure** | Threadpool Rejected | Threadpool面板 | 必须为0 |
+| **Failure %** | Rejected ÷ query rate × 100% | 计算得出 | - |
+| **Avg (ms)** | query latency (avg) | ES Operation面板 | 约15-18ms |
+| **P95/P99 (ms)** | 需要从APM获取 | 或观察query latency max | - |
+| **CPU使用率** | CPU usage | System面板 | **必须<60%** |
+| **内存使用率** | Memory usage / Heap Usage | System/JVM面板 | - |
+| **命中率** | cache hits / (hits + misses) | Caches面板 | - |
+
+#### 13.3.13 压测时ES重点监控清单
+
+| 优先级 | 指标 | 位置 | 阈值 | 原因 |
+|-------|------|------|------|------|
+| 🔴 P0 | CPU usage | System | **<60%** | 与Live共用，超过影响线上 |
+| 🔴 P0 | Cluster status | Cluster | green | 集群健康 |
+| 🔴 P0 | Threadpool Rejected | Threadpool | 0 | 请求被拒绝 |
+| 🔴 P0 | breakers tripped rate | Threadpool | 0 | 熔断触发 |
+| 🟠 P1 | query latency | ES Operation | <50ms | 查询性能 |
+| 🟠 P1 | Heap Usage | JVM | <75% | 内存压力 |
+| 🟠 P1 | Threadpool Queue Count | Threadpool | <10 | 排队请求 |
+| 🟠 P1 | GC time | JVM | <100ms | GC停顿 |
+| 🟡 P2 | query rate | ES Operation | 观察趋势 | 压测流量 |
+| 🟡 P2 | Unassigned shards | Cluster | 0 | 分片状态 |
+| 🟡 P2 | Query cache evictions | Caches | 观察趋势 | 缓存效率 |
+
+### 13.4 关键告警阈值汇总
+
+#### 13.4.1 MySQL告警阈值
 
 | 指标 | 正常范围 | 警告阈值 | 危险阈值 |
 |------|---------|---------|---------|
@@ -1940,7 +2106,7 @@ MatchPickupHubZoneV2
 | 主从延迟 | <1s | 1-5s | >10s |
 | 连接数 | <80%上限 | 80-90% | >90% |
 
-#### 13.3.2 Redis告警阈值
+#### 13.4.2 Redis告警阈值
 
 | 指标 | 正常范围 | 警告阈值 | 危险阈值 |
 |------|---------|---------|---------|
@@ -1952,6 +2118,21 @@ MatchPickupHubZoneV2
 | 连接拒绝 | 0 | >0 | 持续增加 |
 | 主从延迟 | 0 | >100KB | >1MB |
 | 内存碎片率 | <1.5 | 1.5-2.0 | >2.0 |
+
+#### 13.4.3 Elasticsearch告警阈值（与Live共用集群特别注意）
+
+| 指标 | 正常范围 | 警告阈值 | 危险阈值 |
+|------|---------|---------|---------|
+| **CPU使用率** | <50% | 50-60% | **>60%立即停止压测** |
+| 集群状态 | green | yellow | red |
+| 查询延迟 | <30ms | 30-50ms | >50ms |
+| 堆内存使用率 | <70% | 70-75% | >75% |
+| 线程池拒绝 | 0 | >0 | 持续增加 |
+| 熔断触发 | 0 | >0 | 持续增加 |
+| 线程池队列 | 0 | 1-10 | >10 |
+| GC时间 | <50ms | 50-100ms | >100ms |
+| 未分配分片 | 0 | >0 | 持续>0 |
+| 分片容量使用率 | <70% | 70-80% | >80% |
 
 ---
 
@@ -1990,7 +2171,22 @@ MatchPickupHubZoneV2
 | division_mapping_* | | | | | | | | | |
 | division_whitelist | | | | | | | | | |
 
-### 14.4 LocalCache命中率
+### 14.4 Elasticsearch指标
+
+| 指标项 | 压测前基线 | QPS 1K | QPS 2K | QPS 3K | QPS 4K | QPS 5K | QPS 6K | QPS 6.85K |
+|--------|-----------|--------|--------|--------|--------|--------|--------|-----------|
+| 集群状态 | green | | | | | | | |
+| CPU使用率(max) | | | | | | | | |
+| 堆内存使用率 | | | | | | | | |
+| query rate (searches/s) | | | | | | | | |
+| query latency (ms) | | | | | | | | |
+| 线程池队列数 | 0 | | | | | | | |
+| 线程池拒绝数 | 0 | | | | | | | |
+| 熔断触发数 | 0 | | | | | | | |
+| GC时间(ms) | | | | | | | | |
+| Query cache命中率 | | | | | | | | |
+
+### 14.5 LocalCache命中率
 
 | 缓存类型 | QPS | 命中率 |
 |---------|-----|--------|
@@ -1998,16 +2194,17 @@ MatchPickupHubZoneV2
 | 区域集合缓存 | | |
 | Station白名单缓存 | | |
 
-### 14.5 服务间调用指标
+### 14.6 服务间调用指标
 
 | 调用链路 | QPS | Failure | Failure % | Min (ms) | Max (ms) | Avg (ms) | P95 (ms) | P99 (ms) |
 |---------|-----|---------|-----------|----------|----------|----------|----------|----------|
+| Checkout → Network | | | | | | | | |
 | Network → Pickup | | | | | | | | |
 | Network → Smart Sorting (MatchZone) | | | | | | | | |
 | Network → Smart Sorting (MatchPickupHubZoneV2) | | | | | | | | |
 | Smart Sorting → Address (PMS) | | | | | | | | |
 
-### 14.6 端到端指标
+### 14.7 端到端指标
 
 | QPS | 端到端响应时间(P95) | 端到端响应时间(P99) | 端到端成功率 |
 |-----|-------------------|-------------------|-------------|
@@ -2019,7 +2216,7 @@ MatchPickupHubZoneV2
 | 6,000 | | | |
 | 6,850 | | | |
 
-### 14.7 系统资源指标
+### 14.8 系统资源指标
 
 | 服务/中间件 | QPS | CPU使用率 | 内存使用率 |
 |------------|-----|-----------|-----------|
