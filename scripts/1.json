@@ -1,0 +1,97 @@
+[
+    {
+            "last_mile_service_info": {},
+            "mp_throttling_flag": "{{__Csv('throttle.mp_throttling_flag')}}",
+            "order": {
+                "bulky_type": "{{__Csv('throttle.bulky_type')}}",
+                "extension": {
+                    "cod_flag": true,
+                    "is_sip": "{{__Csv('throttle.is_sip')}}",
+                    "shop_id": "{{__Csv('throttle.shop_id')}}",
+                    "shopee_order_sn": "{{__Csv('throttle.shopee_order_sn')}}"
+                },
+                "last_mile_type": "{{__Csv('throttle.last_mile_type')}}",
+                "receiver": {
+                    "address": {
+                        "city": "{{__Csv('throttle.receiver_city')}}",
+                        "country": "ID",
+                        "detail_address": "{{__Csv('throttle.receiver_detail_address')}}",
+                        "district": "{{__Csv('throttle.receiver_district')}}",
+                        "latitude": "{{__Csv('throttle.sender_latitude')}}",
+                        "longitude": "{{__Csv('throttle.sender_longitude')}}",
+                        "postcode": "{{__Csv('throttle.receiver_postcode')}}",
+                        "province": "{{__Csv('throttle.receiver_province')}}"
+                    },
+                    "contact": {
+                        "mobile": "{{__Csv('throttle.receiver_mobile')}}",
+                        "name": "{{__Csv('throttle.receiver_name')}}"
+                    }
+                },
+                "sender": {
+                    "address": {
+                        "city": "{{__Csv('throttle.sender_city')}}",
+                        "country": "ID",
+                        "detail_address": "{{__Csv('throttle.sender_detail_address')}}",
+                        "district": "{{__Csv('throttle.sender_district')}}",
+                        "latitude": "{{__Csv('throttle.sender_latitude')}}",
+                        "longitude": "{{__Csv('throttle.sender_longitude')}}",
+                        "postcode": "{{__Csv('throttle.sender_postcode')}}",
+                        "province": "{{__Csv('throttle.sender_province')}}"
+                    },
+                    "contact": {}
+                },
+                "service_type": "{{__Csv('throttle.service_type')}}",
+                "source_type": "{{__Csv('throttle.source_type')}}"
+            },
+            "region": "ID",
+            "sls_throttling_flag": "{{__Csv('throttle.sls_throttling_flag')}}"
+    },
+    
+    {
+        "last_mile_service_info": {},
+        "mp_throttling_flag": 1,
+        "order": {
+            "bulky_type": 1,
+            "extension": {
+                "cod_flag": true,
+                "is_sip": true,
+                "shop_id": 5865578,
+                "shopee_order_sn": "26011547P6M763"
+            },
+            "last_mile_type": 0,
+            "receiver": {
+                "address": {
+                    "city": "KAB. SERANG",
+                    "country": "ID",
+                    "detail_address": "Alamat Perumahan Negara Lestari, Gang Abadi Blok H9 No. 56, Desa Negara, Nagara, Kibin",
+                    "district": "KIBIN",
+                    "latitude": -6.180187,
+                    "longitude": 106.29123,
+                    "postcode": "42185",
+                    "province": "BANTEN"
+                },
+                "contact": {
+                    "mobile": "6282319387658",
+                    "name": "Misda"
+                }
+            },
+            "sender": {
+                "address": {
+                    "city": "KOTA JAKARTA PUSAT",
+                    "country": "ID",
+                    "detail_address": "jl pangeran jayakarta ruko ibis blok d 1 no 8 (Ruko tutup jam 5sore)",
+                    "district": "SAWAH BESAR",
+                    "latitude": -6.139035,
+                    "longitude": 106.82261900000003,
+                    "postcode": "10730",
+                    "province": "DKI JAKARTA"
+                },
+                "contact": {}
+            },
+            "service_type": 4,
+            "source_type": 2
+        },
+        "region": "ID",
+        "sls_throttling_flag": 1
+    }
+]
